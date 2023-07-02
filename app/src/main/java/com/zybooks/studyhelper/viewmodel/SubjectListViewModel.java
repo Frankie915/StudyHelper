@@ -1,23 +1,30 @@
 package com.zybooks.studyhelper.viewmodel;
 
 import android.app.Application;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
 import com.zybooks.studyhelper.model.Subject;
 import com.zybooks.studyhelper.repo.StudyRepository;
 import java.util.List;
 
-public class SubjectListViewModel {
+public class SubjectListViewModel extends AndroidViewModel {
 
-    private StudyRepository studyRepo;
+    private final StudyRepository mStudyRepo;
 
     public SubjectListViewModel(Application application) {
-        studyRepo = StudyRepository.getInstance(application.getApplicationContext());
+        super(application);
+        mStudyRepo = StudyRepository.getInstance(application.getApplicationContext());
     }
 
-    public List<Subject> getSubjects() {
-        return studyRepo.getSubjects();
+    public LiveData<List<Subject>> getSubjects() {
+        return mStudyRepo.getSubjects();
     }
 
     public void addSubject(Subject subject) {
-        studyRepo.addSubject(subject);
+        mStudyRepo.addSubject(subject);
+    }
+
+    public void deleteSubject(Subject subject) {
+        mStudyRepo.deleteSubject(subject);
     }
 }

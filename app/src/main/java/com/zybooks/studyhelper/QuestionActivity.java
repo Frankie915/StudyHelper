@@ -1,5 +1,6 @@
 package com.zybooks.studyhelper;
 
+import androidx.lifecycle.ViewModelProvider;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
@@ -43,7 +44,7 @@ public class QuestionActivity extends AppCompatActivity {
         mAnswerButton = findViewById(R.id.answer_button);
         mShowQuestionLayout = findViewById(R.id.show_question_layout);
         mNoQuestionLayout = findViewById(R.id.no_question_layout);
-
+        mQuestionListViewModel = new ViewModelProvider(this).get(QuestionListViewModel.class);
         // Add click callbacks
         mAnswerButton.setOnClickListener(view -> toggleAnswerVisibility());
         findViewById(R.id.add_question_button).setOnClickListener(view -> addQuestion());
@@ -55,12 +56,11 @@ public class QuestionActivity extends AppCompatActivity {
         mSubject = new Subject(subjectText);
         mSubject.setId(subjectId);
 
-        // Get all questions for this subject
-        mQuestionListViewModel = new QuestionListViewModel(getApplication());
-        mQuestionList = mQuestionListViewModel.getQuestions(subjectId);
-
-        // Display question
-        updateUI();
+        mQuestionListViewModel.loadQuestions(subjectId);
+        mQuestionListViewModel.questionListLiveData.observe(this, questions -> {
+            mQuestionList = questions;
+            updateUI();
+        });
     }
 
     private void updateUI() {

@@ -1,17 +1,18 @@
 package com.zybooks.studyhelper.repo;
 
+import androidx.lifecycle.LiveData;
 import android.content.Context;
+import androidx.room.Room;
 import com.zybooks.studyhelper.model.Question;
 import com.zybooks.studyhelper.model.Subject;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public class StudyRepository {
 
+    private static final String DATABASE_NAME = "study2.db";
     private static StudyRepository mStudyRepo;
-    private final List<Subject> mSubjectList;
-    private final HashMap<Long, List<Question>> mQuestionMap;
+    private final SubjectDao mSubjectDao;
+    private final QuestionDao mQuestionDao;
 
     public static StudyRepository getInstance(Context context) {
         if (mStudyRepo == null) {
@@ -21,77 +22,84 @@ public class StudyRepository {
     }
 
     private StudyRepository(Context context) {
+        StudyDatabase database = Room.databaseBuilder(context, StudyDatabase.class, DATABASE_NAME)
+                .allowMainThreadQueries()
+                .fallbackToDestructiveMigration()
+                .build();
 
-        mSubjectList = new ArrayList<>();
-        mQuestionMap = new HashMap<>();
+        mSubjectDao = database.subjectDao();
+        mQuestionDao = database.questionDao();
 
-        addStarterData();
+        /*
+        if (mSubjectDao.getSubjects().isEmpty()) {
+            addStarterData();
+        }*/
     }
 
     private void addStarterData() {
-        // Add a few subjects and questions
         Subject subject = new Subject("Math");
-        subject.setId(1);
-        addSubject(subject);
+        long subjectId = mSubjectDao.addSubject(subject);
 
         Question question = new Question();
-        question.setId(1);
         question.setText("What is 2 + 3?");
         question.setAnswer("2 + 3 = 5");
-        question.setSubjectId(1);
-        addQuestion(question);
+        question.setSubjectId(subjectId);
+        mQuestionDao.addQuestion(question);
 
         question = new Question();
-        question.setId(2);
         question.setText("What is pi?");
         question.setAnswer("The ratio of a circle's circumference to its diameter.");
-        question.setSubjectId(1);
-        addQuestion(question);
+        question.setSubjectId(subjectId);
+        mQuestionDao.addQuestion(question);
 
         subject = new Subject("History");
-        subject.setId(2);
-        addSubject(subject);
+        subjectId = mSubjectDao.addSubject(subject);
 
         question = new Question();
-        question.setId(3);
         question.setText("On what date was the U.S. Declaration of Independence adopted?");
         question.setAnswer("July 4, 1776");
-        question.setSubjectId(2);
-        addQuestion(question);
+        question.setSubjectId(subjectId);
+        mQuestionDao.addQuestion(question);
 
         subject = new Subject("Computing");
-        subject.setId(3);
-        addSubject(subject);
+        mSubjectDao.addSubject(subject);
     }
 
     public void addSubject(Subject subject) {
-        mSubjectList.add(subject);
-        List<Question> questionList = new ArrayList<>();
-        mQuestionMap.put(subject.getId(), questionList);
+        long subjectId = mSubjectDao.addSubject(subject);
+        subject.setId(subjectId);
     }
 
-    public Subject getSubject(long subjectId) {
-        for (Subject subject: mSubjectList) {
-            if (subject.getId() == subjectId) {
-                return subject;
-            }
-        }
-
-        return null;
+    public LiveData<Subject> getSubject(long subjectId) {
+        return mSubjectDao.getSubject(subjectId);
     }
 
-    public List<Subject> getSubjects() {
-        return mSubjectList;
+    public LiveData<List<Subject>> getSubjects() {
+        return mSubjectDao.getSubjects();
+    }
+
+    public void deleteSubject(Subject subject) {
+        mSubjectDao.deleteSubject(subject);
+    }
+
+    public LiveData<Question> getQuestion(long questionId) {
+        return mQuestionDao.getQuestion(questionId);
+    }
+
+    public LiveData<List<Question>> getQuestions(long subjectId) {
+        return mQuestionDao.getQuestions(subjectId);
     }
 
     public void addQuestion(Question question) {
-        List<Question> questionList = mQuestionMap.get(question.getSubjectId());
-        if (questionList != null) {
-            questionList.add(question);
-        }
+        long questionId = mQuestionDao.addQuestion(question);
+        question.setId(questionId);
     }
 
-    public List<Question> getQuestions(long subjectId) {
-        return mQuestionMap.get(subjectId);
+    public void updateQuestion(Question question) {
+        mQuestionDao.updateQuestion(question);
+    }
+
+    public void deleteQuestion(Question question) {
+        mQuestionDao.deleteQuestion(question);
     }
 }
