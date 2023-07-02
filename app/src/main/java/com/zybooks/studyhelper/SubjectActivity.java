@@ -15,7 +15,11 @@ import com.zybooks.studyhelper.model.Subject;
 import com.zybooks.studyhelper.viewmodel.SubjectListViewModel;
 import java.util.List;
 import androidx.lifecycle.ViewModelProvider;
-
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.graphics.Color;
 public class SubjectActivity extends AppCompatActivity
         implements SubjectDialogFragment.OnSubjectEnteredListener {
 
@@ -23,6 +27,12 @@ public class SubjectActivity extends AppCompatActivity
     private RecyclerView mRecyclerView;
     private int[] mSubjectColors;
     private SubjectListViewModel mSubjectListViewModel;
+
+    private Boolean mLoadSubjectList = true;
+
+    private Subject mSelectedSubject;
+    private int mSelectedSubjectPosition = RecyclerView.NO_POSITION;
+    private ActionMode mActionMode = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +54,9 @@ public class SubjectActivity extends AppCompatActivity
         // Show the subjects
         // Call updateUI() when the subject list changes
         mSubjectListViewModel.getSubjects().observe(this, subjects -> {
-            updateUI(subjects);
+            if (mLoadSubjectList) {
+                updateUI(subjects);
+            }
         });
     }
 
@@ -70,7 +82,7 @@ public class SubjectActivity extends AppCompatActivity
     }
 
     private class SubjectHolder extends RecyclerView.ViewHolder
-            implements View.OnClickListener {
+            implements View.OnClickListener, View.OnLongClickListener {
 
         private Subject mSubject;
         private final TextView mSubjectTextView;
@@ -79,15 +91,23 @@ public class SubjectActivity extends AppCompatActivity
             super(inflater.inflate(R.layout.recycler_view_items, parent, false));
             itemView.setOnClickListener(this);
             mSubjectTextView = itemView.findViewById(R.id.subject_text_view);
+            itemView.setOnLongClickListener(this);
         }
 
         public void bind(Subject subject, int position) {
             mSubject = subject;
             mSubjectTextView.setText(subject.getText());
 
-            // Make the background color dependent on the length of the subject string
-            int colorIndex = subject.getText().length() % mSubjectColors.length;
-            mSubjectTextView.setBackgroundColor(mSubjectColors[colorIndex]);
+            if (mSelectedSubjectPosition == position) {
+                // Make selected subject stand out
+                mSubjectTextView.setBackgroundColor(Color.RED);
+            }
+            else {
+
+                // Make the background color dependent on the length of the subject string
+                int colorIndex = subject.getText().length() % mSubjectColors.length;
+                mSubjectTextView.setBackgroundColor(mSubjectColors[colorIndex]);
+            }
         }
 
         @Override
@@ -99,8 +119,71 @@ public class SubjectActivity extends AppCompatActivity
 
             startActivity(intent);
         }
+
+        @Override
+        public boolean onLongClick(View view) {
+            if (mActionMode != null) {
+                return false;
+            }
+
+            mSelectedSubject = mSubject;
+            mSelectedSubjectPosition = getAbsoluteAdapterPosition();
+
+            // Re-bind the selected item
+            mSubjectAdapter.notifyItemChanged(mSelectedSubjectPosition);
+
+            // Show the CAB
+            mActionMode = SubjectActivity.this.startActionMode(mActionModeCallback);
+
+            return true;
+        }
     }
 
+    private final ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
+
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            // Provide context menu for CAB
+            MenuInflater inflater = mode.getMenuInflater();
+            inflater.inflate(R.menu.context_menu, menu);
+            return true;
+        }
+
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false;
+        }
+
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            // Process action item selection
+            if (item.getItemId() == R.id.delete) {
+                // Stop updateUI() from being called
+                mLoadSubjectList = false;
+
+                // Delete from ViewModel
+                mSubjectListViewModel.deleteSubject(mSelectedSubject);
+
+                // Remove from RecyclerView
+                mSubjectAdapter.removeSubject(mSelectedSubject);
+
+                // Close the CAB
+                mode.finish();
+                return true;
+            }
+
+            return false;
+        }
+
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            mActionMode = null;
+
+            // CAB closing, need to deselect item if not deleted
+            mSubjectAdapter.notifyItemChanged(mSelectedSubjectPosition);
+            mSelectedSubjectPosition = RecyclerView.NO_POSITION;
+        }
+    };
     private class SubjectAdapter extends RecyclerView.Adapter<SubjectHolder> {
 
         private final List<Subject> mSubjectList;
@@ -124,6 +207,32 @@ public class SubjectActivity extends AppCompatActivity
         @Override
         public int getItemCount() {
             return mSubjectList.size();
+        }
+
+        public void addSubject(Subject subject) {
+
+            // Add the new subject at the beginning of the list
+            mSubjectList.add(0, subject);
+
+            // Notify the adapter that item was added to the beginning of the list
+            notifyItemInserted(0);
+
+            // Scroll to the top
+            mRecyclerView.scrollToPosition(0);
+        }
+
+        public void removeSubject(Subject subject) {
+
+            // Find subject in the list
+            int index = mSubjectList.indexOf(subject);
+            if (index >= 0) {
+
+                // Remove the subject
+                mSubjectList.remove(index);
+
+                // Notify adapter of subject removal
+                notifyItemRemoved(index);
+            }
         }
     }
 }
