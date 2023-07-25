@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase;
 import com.zybooks.studyhelper.model.Question;
 import com.zybooks.studyhelper.model.Subject;
 
-@Database(entities = {Question.class, Subject.class}, version = 2)
+@Database(entities = {Question.class, Subject.class}, version = 3)
 public abstract class StudyDatabase extends RoomDatabase {
 
     public abstract QuestionDao questionDao();
